@@ -1,0 +1,19 @@
+# Python internals
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Environments
+.venv/
+venv/
+ENV/
+
+# Database (SDET Rule: Never upload local DB)
+*.db
+db/*.db
+
+# OS files
+.DS_Store
+Thumbs.db
