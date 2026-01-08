@@ -16,12 +16,12 @@ jobs:
     # 3. Checkout: Download the code to the runner
     - uses: actions/checkout@v4
 
-    # 4. Run Everything using Docker Compose
+    # 4. Run Everything using Docker Compose (V2 syntax)
     - name: Build and Run with Docker Compose
       run: |
-        docker-compose up -d --build
+        docker compose up -d --build
         
     # 5. Run API Tests inside the container
     - name: Run API Tests in Docker
       run: |
-        docker-compose exec -T web pytest tests/test_api.py
+        docker compose exec -T web pytest tests/test_api.py
