@@ -17,3 +17,8 @@ db/*.db
 # OS files
 .DS_Store
 Thumbs.db
+
+# Test Reports
+allure-results/
+allure-report/
+*.html
