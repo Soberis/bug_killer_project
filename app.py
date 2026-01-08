@@ -74,5 +74,5 @@ def delete_bug(bug_id):
 
 if __name__ == '__main__':
     # Start the Flask development server
-    # debug=True allows the server to reload automatically on code changes
-    app.run(debug=True)
+    # host='0.0.0.0' is REQUIRED for Docker access
+    app.run(host='0.0.0.0', port=5000, debug=True)

@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  # 我们的 BugKiller Web 应用
+  web:
+    build: .
+    image: bugkiller:compose-v1
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./db:/app/db  # 挂载数据库目录，防止重启容器后数据丢失
+    environment:
+      - FLASK_ENV=development
