@@ -2,10 +2,17 @@ import sqlite3
 import os
 
 def init_database():
-    # Ensure the db directory exists
-    db_path = 'db/bugkiller.db'
+    # Get the absolute path of the current file's directory
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    db_dir = os.path.join(base_dir, 'db')
+    db_path = os.path.join(db_dir, 'bugkiller.db')
     
-    # Connect to the database (it will be created if it doesn't exist)
+    # Create the db directory if it doesn't exist
+    if not os.path.exists(db_dir):
+        os.makedirs(db_dir)
+        print(f"Created directory: {db_dir}")
+    
+    # Connect to the database
     connection = sqlite3.connect(db_path)
     
     # Create a cursor object to execute SQL commands
