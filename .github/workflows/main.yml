@@ -28,13 +28,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    # 6. Initialize Database (Crucial step!)
+    # 6. Initialize Database
     - name: Initialize Database
       run: python init_db.py
 
-    # 7. Run API Tests
-    # We run pytest directly. 
-    # Note: If your API tests expect a running server, you would need to start 'app.py' in background.
-    # For now, let's assume test_api.py is written correctly for CI.
+    # 7. Start Flask App in background and wait for it to be ready
+    - name: Start Flask App
+      run: |
+        python app.py &
+        sleep 5
+
+    # 8. Run API Tests
     - name: Run API Tests
       run: pytest tests/test_api.py
