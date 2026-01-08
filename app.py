@@ -4,6 +4,7 @@ import sqlite3
 import pymysql
 from flask import Flask, render_template, request, redirect, url_for
 from init_db import init_database
+from tasks import send_bug_report_email
 
 # Create the Flask application instance
 app = Flask(__name__)
@@ -135,6 +136,11 @@ def add_bug():
             conn.execute('INSERT INTO bugs (title, status) VALUES (?, ?)', (title, status))
         conn.commit()
         conn.close()
+
+        # [Level 14] Trigger background task (Async)
+        # We don't wait for the result here, so the user gets redirected immediately
+        send_bug_report_email.delay(title, status)
+
         return redirect(url_for('home'))
     
     return render_template('add_bug.html')

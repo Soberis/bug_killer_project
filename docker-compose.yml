@@ -25,8 +25,33 @@ services:
       - DB_USER=root
       - DB_PASSWORD=root
       - DB_NAME=bugkiller
+      - REDIS_URL=redis://redis:6379/0
     depends_on:
       - db
+      - redis
+
+  # 3. Redis 消息代理
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+
+  # 4. Celery Worker (后台任务执行器)
+  worker:
+    build: .
+    image: bugkiller:celery-worker
+    command: celery -A tasks.celery_app worker --loglevel=info
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_TYPE=mysql
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=root
+      - DB_NAME=bugkiller
+    depends_on:
+      - db
+      - redis
 
 volumes:
   db_data:
