@@ -10,7 +10,7 @@ class AddBugPage(BasePage):
     
     def __init__(self, page):
         super().__init__(page)
-        self.url = "http://127.0.0.1:5000"
+        self.url = "http://127.0.0.1:30001"
 
     def open(self):
         self.navigate(self.url)
