@@ -1,58 +1,33 @@
 import pytest
 import allure
 import time
-from playwright.sync_api import sync_playwright
-
-# The URL of our local BugKiller app
-BASE_URL = "http://127.0.0.1:5000"
+from pages.add_bug_page import AddBugPage
 
 @allure.feature("Bug Management")
-@allure.story("UI Operations")
-def test_add_bug_ui():
+@allure.story("UI Operations with POM")
+def test_add_bug_ui_pom(page):
     """
-    Test adding a bug through the real browser interface.
+    Test adding a bug using Page Object Model.
     """
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        context = browser.new_context()
-        page = context.new_page()
-        
-        try:
-            with allure.step("1. Go to the dashboard"):
-                page.goto(BASE_URL)
-                assert "BugKiller - Dashboard" in page.title()
-                allure.attach(page.screenshot(), name="dashboard", attachment_type=allure.attachment_type.PNG)
-            
-            with allure.step("2. Click the '+ Add New Bug' button"):
-                page.click("text=+ Add New Bug")
-            
-            unique_title = f"UI Bug {int(time.time())}"
-            with allure.step(f"3. Fill the form with title: {unique_title}"):
-                page.fill("#bug_title", unique_title)
-                page.select_option("#bug_status", "In Progress")
-                allure.attach(page.screenshot(), name="form_filled", attachment_type=allure.attachment_type.PNG)
-            
-            with allure.step("4. Click Submit"):
-                page.click("button:has-text('Submit Bug')")
-            
-            with allure.step("5. Verify the bug is on the dashboard"):
-                assert page.is_visible(f"text={unique_title}")
-                assert page.is_visible("text=In Progress")
-                allure.attach(page.screenshot(), name="final_dashboard", attachment_type=allure.attachment_type.PNG)
-            
-            with allure.step(f"6. Delete the bug: {unique_title}"):
-                page.once("dialog", lambda dialog: dialog.accept())
-                bug_row = page.locator("tr", has_text=unique_title)
-                bug_row.get_by_role("link", name="Delete").click()
-                page.wait_for_selector(f"text={unique_title}", state="hidden")
-                assert not page.is_visible(f"text={unique_title}")
+    # 1. Initialize the Page Object (The Mechanic)
+    add_page = AddBugPage(page)
+    
+    # 2. Driver actions (Readable English)
+    with allure.step("Navigate to dashboard"):
+        add_page.open()
+        assert "BugKiller - Dashboard" in add_page.get_title()
 
-        except Exception as e:
-            allure.attach(page.screenshot(), name="error_screenshot", attachment_type=allure.attachment_type.PNG)
-            raise e
-        finally:
-            browser.close()
+    with allure.step("Go to Add Bug page"):
+        add_page.click_add_new_bug()
 
-if __name__ == "__main__":
-    # You can run this directly or via pytest
-    test_add_bug_ui()
+    unique_title = f"POM Bug {int(time.time())}"
+    with allure.step(f"Add a new bug: {unique_title}"):
+        add_page.enter_bug_details(unique_title, "In Progress")
+        add_page.submit_bug()
+
+    with allure.step("Verify bug visibility"):
+        assert add_page.is_bug_present(unique_title)
+
+    with allure.step(f"Cleanup: Delete bug {unique_title}"):
+        add_page.delete_bug(unique_title)
+        assert not add_page.is_bug_present(unique_title)

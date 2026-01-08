@@ -12,6 +12,9 @@ bug_killer_project/
 ├── templates/          # Flask HTML 模板
 │   ├── index.html      # 仪表盘页面
 │   └── add_bug.html    # 添加 Bug 页面
+├── pages/              # Page Object Model (POM) 页面对象类
+│   ├── base_page.py    # 页面基类
+│   └── add_bug_page.py # 具体的业务页面
 ├── tests/              # 自动化测试套件
 │   ├── test_api.py     # 接口测试 (Requests)
 │   └── test_ui.py      # UI 自动化测试 (Playwright + Allure)
