@@ -1,6 +1,7 @@
 import os
 import requests
 import responses
+from app import app
 
 # The base URL of our Flask application
 # Default to localhost:5000 (standard for inside container or local dev)
@@ -30,20 +31,24 @@ def test_add_bug_with_mocked_notification():
     SLACK_URL = "https://api.slack.com/messaging/send"
     responses.add(responses.POST, SLACK_URL, json={"status": "ok"}, status=200)
 
-    # 2. Add a bug via our API
+    # 2. Add a bug via Flask Test Client (runs in the same process)
     new_bug = {
         "bug_title": "Mocked Notification Bug",
         "bug_status": "New"
     }
-    response = requests.post(f"{BASE_URL}/add", data=new_bug)
     
-    # 3. Verify bug was added
-    assert response.status_code == 200
-    assert "Mocked Notification Bug" in response.text
+    with app.test_client() as client:
+        # data=new_bug in test_client sends it as form data
+        response = client.post("/add", data=new_bug, follow_redirects=True)
+        
+        # 3. Verify bug was added
+        assert response.status_code == 200
+        assert b"Mocked Notification Bug" in response.data
     
     # 4. Verify the Slack notification was actually attempted
-    # Note: This works because our app calls this URL during the /add request
+    # This works because everything is in the same process now!
     assert len(responses.calls) > 0
+    assert responses.calls[0].request.url == SLACK_URL
     print("\n[Success] Bug added and external notification mock verified!")
 
 def test_add_bug_automation():
