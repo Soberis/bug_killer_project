@@ -28,7 +28,7 @@ def get_db_connection(connect_to_db=True):
     """
     if DB_TYPE == 'mysql':
         # Retry logic for MySQL as it takes time to boot up in Docker
-        retries = 5
+        retries = 10
         while retries > 0:
             try:
                 conn = pymysql.connect(
@@ -36,7 +36,8 @@ def get_db_connection(connect_to_db=True):
                     user=DB_USER,
                     password=DB_PASSWORD,
                     database=DB_NAME if connect_to_db else None,
-                    cursorclass=pymysql.cursors.DictCursor
+                    cursorclass=pymysql.cursors.DictCursor,
+                    connect_timeout=10
                 )
                 return conn
             except Exception as e:
@@ -46,7 +47,7 @@ def get_db_connection(connect_to_db=True):
                     return get_db_connection(connect_to_db=False)
                 
                 retries -= 1
-                print(f"Waiting for MySQL... {retries} retries left. Error: {e}")
+                print(f"Waiting for MySQL ({DB_HOST})... {retries} retries left. Error: {e}")
                 time.sleep(5)
         raise Exception("Could not connect to MySQL after several retries.")
     else:

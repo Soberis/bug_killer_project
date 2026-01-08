@@ -43,7 +43,8 @@ allure serve ./allure-results
 
 ## 🛠️ 技术栈
 - **Backend**: Flask (Python)
-- **Database**: SQLite
+- **Database**: MySQL 8 (Containerized)
+- **Task Queue**: Celery + Redis
 - **Testing**: Pytest, Playwright, Requests
 - **Reporting**: Allure Framework
-- **DevOps**: Docker, GitHub Actions
+- **DevOps**: Docker, Docker Compose, GitHub Actions
