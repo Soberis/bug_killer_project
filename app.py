@@ -11,7 +11,6 @@ from prometheus_flask_exporter import PrometheusMetrics
 app = Flask(__name__)
 metrics = PrometheusMetrics(app)
 
-@app.route('/')
 # Database Configuration from Environment Variables
 DB_TYPE = os.environ.get('DATABASE_TYPE', 'mysql')
 DB_HOST = os.environ.get('DB_HOST', 'localhost')
@@ -111,6 +110,11 @@ def init_db_schema():
 # Initialize database before first request
 with app.app_context():
     init_db_schema()
+
+@app.route('/health')
+def health_check():
+    """Health check endpoint for K8s."""
+    return {"status": "healthy"}, 200
 
 # Define the root route
 @app.route('/')

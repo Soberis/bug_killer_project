@@ -17,6 +17,8 @@ services:
     image: bugkiller:compose-mysql
     ports:
       - "5000:5000"
+    volumes:
+      - .:/app
     environment:
       - FLASK_ENV=development
       - DATABASE_TYPE=mysql
@@ -41,6 +43,8 @@ services:
     build: .
     image: bugkiller:celery-worker
     command: celery -A tasks.celery_app worker --loglevel=info
+    volumes:
+      - .:/app
     environment:
       - REDIS_URL=redis://redis:6379/0
       - DATABASE_TYPE=mysql

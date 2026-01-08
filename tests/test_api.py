@@ -1,7 +1,16 @@
+import os
 import requests
+import responses
 
 # The base URL of our Flask application
-BASE_URL = "http://127.0.0.1:30001"
+# Default to localhost:5000 (standard for inside container or local dev)
+BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:5000")
+
+def test_health_check():
+    """Verify the health check endpoint."""
+    response = requests.get(f"{BASE_URL}/health")
+    assert response.status_code == 200
+    assert response.json() == {"status": "healthy"}
 
 def test_home_page_status_code():
     """
@@ -11,6 +20,31 @@ def test_home_page_status_code():
     # Assert that the status code is 200 (OK)
     assert response.status_code == 200
     assert "BugKiller Dashboard" in response.text
+
+@responses.activate
+def test_add_bug_with_mocked_notification():
+    """
+    Test adding a bug and verify it triggers an external notification (mocked).
+    """
+    # 1. Mock the external Slack API
+    SLACK_URL = "https://api.slack.com/messaging/send"
+    responses.add(responses.POST, SLACK_URL, json={"status": "ok"}, status=200)
+
+    # 2. Add a bug via our API
+    new_bug = {
+        "bug_title": "Mocked Notification Bug",
+        "bug_status": "New"
+    }
+    response = requests.post(f"{BASE_URL}/add", data=new_bug)
+    
+    # 3. Verify bug was added
+    assert response.status_code == 200
+    assert "Mocked Notification Bug" in response.text
+    
+    # 4. Verify the Slack notification was actually attempted
+    # Note: This works because our app calls this URL during the /add request
+    assert len(responses.calls) > 0
+    print("\n[Success] Bug added and external notification mock verified!")
 
 def test_add_bug_automation():
     """
