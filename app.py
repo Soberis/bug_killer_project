@@ -1,63 +1,140 @@
-from flask import Flask, render_template, request, redirect, url_for
-import sqlite3
 import os
+import time
+import sqlite3
+import pymysql
+from flask import Flask, render_template, request, redirect, url_for
 from init_db import init_database
 
 # Create the Flask application instance
 app = Flask(__name__)
 
-# Ensure database is initialized before the first request
-with app.app_context():
-    init_database()
+# Database Configuration from Environment Variables
+DB_TYPE = os.environ.get('DATABASE_TYPE', 'mysql')
+DB_HOST = os.environ.get('DB_HOST', 'localhost')
+DB_USER = os.environ.get('DB_USER', 'root')
+DB_PASSWORD = os.environ.get('DB_PASSWORD', 'root')
+DB_NAME = os.environ.get('DB_NAME', 'bugkiller')
 
-# Database path (Using absolute path for stability)
+# SQLite path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, 'db', 'bugkiller.db')
+SQLITE_PATH = os.path.join(BASE_DIR, 'db', 'bugkiller.db')
 
-def get_db_connection():
+def get_db_connection(connect_to_db=True):
     """
     Helper function to create a database connection.
-    row_factory allows us to access columns by name like a dictionary.
+    Supports both SQLite and MySQL based on environment.
+    If connect_to_db is False, connects to MySQL server without selecting a DB.
     """
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    if DB_TYPE == 'mysql':
+        # Retry logic for MySQL as it takes time to boot up in Docker
+        retries = 5
+        while retries > 0:
+            try:
+                conn = pymysql.connect(
+                    host=DB_HOST,
+                    user=DB_USER,
+                    password=DB_PASSWORD,
+                    database=DB_NAME if connect_to_db else None,
+                    cursorclass=pymysql.cursors.DictCursor
+                )
+                return conn
+            except Exception as e:
+                # If database doesn't exist, we need to connect without DB first
+                if "Unknown database" in str(e) and connect_to_db:
+                    print(f"Database {DB_NAME} not found. Will create it.")
+                    return get_db_connection(connect_to_db=False)
+                
+                retries -= 1
+                print(f"Waiting for MySQL... {retries} retries left. Error: {e}")
+                time.sleep(5)
+        raise Exception("Could not connect to MySQL after several retries.")
+    else:
+        # Fallback to SQLite
+        conn = sqlite3.connect(SQLITE_PATH)
+        conn.row_factory = sqlite3.Row
+        return conn
 
-# Define the root route to display the bug list from database
+def init_db_schema():
+    """Ensure database and tables exist."""
+    if DB_TYPE == 'sqlite':
+        init_database()
+    else:
+        # 1. Connect to MySQL Server (without DB)
+        conn = get_db_connection(connect_to_db=False)
+        try:
+            with conn.cursor() as cursor:
+                # 2. Create Database if not exists
+                cursor.execute(f"CREATE DATABASE IF NOT EXISTS {DB_NAME}")
+                print(f"Database {DB_NAME} ensured.")
+            conn.commit()
+        finally:
+            conn.close()
+
+        # 3. Connect to the specific DB and create tables
+        conn = get_db_connection(connect_to_db=True)
+        try:
+            with conn.cursor() as cursor:
+                # Create bugs table if it doesn't exist for MySQL
+                cursor.execute('''
+                    CREATE TABLE IF NOT EXISTS bugs (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        title VARCHAR(255) NOT NULL,
+                        status VARCHAR(50) DEFAULT 'New',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+            conn.commit()
+            print("Table 'bugs' ensured.")
+            
+            # 4. Auto Seeding: If table is empty, add sample data
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT COUNT(*) as count FROM bugs")
+                result = cursor.fetchone()
+                if result['count'] == 0:
+                    print("Database is empty. Seeding sample data...")
+                    sample_bugs = [
+                        ('Login page crashing on Chrome', 'Open'),
+                        ('UI button color is wrong', 'In Progress'),
+                        ('API returning 500 error on /search', 'New')
+                    ]
+                    cursor.executemany("INSERT INTO bugs (title, status) VALUES (%s, %s)", sample_bugs)
+                    conn.commit()
+                    print("Sample data seeded successfully.")
+        finally:
+            conn.close()
+
+# Initialize database before first request
+with app.app_context():
+    init_db_schema()
+
+# Define the root route
 @app.route('/')
 def home():
-    """
-    Fetch all bugs from the database and render them.
-    """
     conn = get_db_connection()
-    # SQL: SELECT all columns from bugs table, ordered by creation time
-    bugs = conn.execute('SELECT * FROM bugs ORDER BY created_at DESC').fetchall()
+    if DB_TYPE == 'mysql':
+        with conn.cursor() as cursor:
+            cursor.execute('SELECT * FROM bugs ORDER BY created_at DESC')
+            bugs = cursor.fetchall()
+    else:
+        bugs = conn.execute('SELECT * FROM bugs ORDER BY created_at DESC').fetchall()
     conn.close()
-    
-    # SDET Practice: Ensure we got a list (even if empty)
-    assert isinstance(bugs, list), "Database result must be a list"
-    
     return render_template('index.html', bugs=bugs)
 
-# Route to handle adding a new bug to database
+# Route to handle adding a new bug
 @app.route('/add', methods=['GET', 'POST'])
 def add_bug():
-    """
-    GET: Show the add bug form.
-    POST: Insert new bug into database and redirect.
-    """
     if request.method == 'POST':
         title = request.form.get('bug_title')
         status = request.form.get('bug_status')
         
-        assert title, "Bug title cannot be empty"
-        
-        # Database operation
         conn = get_db_connection()
-        conn.execute('INSERT INTO bugs (title, status) VALUES (?, ?)', (title, status))
+        if DB_TYPE == 'mysql':
+            with conn.cursor() as cursor:
+                cursor.execute('INSERT INTO bugs (title, status) VALUES (%s, %s)', (title, status))
+        else:
+            conn.execute('INSERT INTO bugs (title, status) VALUES (?, ?)', (title, status))
         conn.commit()
         conn.close()
-        
         return redirect(url_for('home'))
     
     return render_template('add_bug.html')
@@ -65,16 +142,14 @@ def add_bug():
 # Route to handle deleting a bug
 @app.route('/delete/<int:bug_id>')
 def delete_bug(bug_id):
-    """
-    Delete a bug by its ID and redirect to home.
-    <int:bug_id> is a URL variable that captures the ID from the link.
-    """
     conn = get_db_connection()
-    # SQL: DELETE command with a WHERE clause to target a specific row
-    conn.execute('DELETE FROM bugs WHERE id = ?', (bug_id,))
+    if DB_TYPE == 'mysql':
+        with conn.cursor() as cursor:
+            cursor.execute('DELETE FROM bugs WHERE id = %s', (bug_id,))
+    else:
+        conn.execute('DELETE FROM bugs WHERE id = ?', (bug_id,))
     conn.commit()
     conn.close()
-    
     return redirect(url_for('home'))
 
 if __name__ == '__main__':
