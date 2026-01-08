@@ -1,9 +1,14 @@
 from flask import Flask, render_template, request, redirect, url_for
 import sqlite3
 import os
+from init_db import init_database
 
 # Create the Flask application instance
 app = Flask(__name__)
+
+# Ensure database is initialized before the first request
+with app.app_context():
+    init_database()
 
 # Database path (Using absolute path for stability)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

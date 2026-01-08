@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # 我们的 BugKiller Web 应用
   web:
