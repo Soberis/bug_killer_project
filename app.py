@@ -5,10 +5,13 @@ import pymysql
 from flask import Flask, render_template, request, redirect, url_for
 from init_db import init_database
 from tasks import send_bug_report_email
+from prometheus_flask_exporter import PrometheusMetrics
 
 # Create the Flask application instance
 app = Flask(__name__)
+metrics = PrometheusMetrics(app)
 
+@app.route('/')
 # Database Configuration from Environment Variables
 DB_TYPE = os.environ.get('DATABASE_TYPE', 'mysql')
 DB_HOST = os.environ.get('DB_HOST', 'localhost')
