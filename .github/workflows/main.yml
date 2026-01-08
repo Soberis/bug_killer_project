@@ -16,12 +16,24 @@ jobs:
     # 3. Checkout: Download the code to the runner
     - uses: actions/checkout@v4
 
-    # 4. Run Everything using Docker Compose (V2 syntax)
+    # 4. Run Everything using Docker Compose
     - name: Build and Run with Docker Compose
       run: |
         docker compose up -d --build
-        
-    # 5. Run API Tests inside the container
-    - name: Run API Tests in Docker
+        echo "Waiting for services to be ready..."
+        sleep 20  # Give MySQL time to initialize
+
+    # 5. Run API Tests
+    - name: Run API Tests
       run: |
         docker compose exec -T web pytest tests/test_api.py
+
+    # 6. Run UI Tests (POM)
+    - name: Run UI Tests
+      run: |
+        docker compose exec -T web pytest tests/test_ui.py
+
+    # 7. Cleanup
+    - name: Shutdown containers
+      if: always()
+      run: docker compose down
