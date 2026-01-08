@@ -139,8 +139,17 @@ def add_bug():
         conn.close()
 
         # [Level 14] Trigger background task (Async)
-        # We don't wait for the result here, so the user gets redirected immediately
         send_bug_report_email.delay(title, status)
+
+        # [Level 15] External Notification Simulation
+        # In reality, this would be a real URL like https://hooks.slack.com/...
+        try:
+            import requests as external_requests
+            external_requests.post("https://api.slack.com/messaging/send", json={
+                "text": f"New Bug Reported: {title} (Status: {status})"
+            }, timeout=1)
+        except Exception as e:
+            print(f"External notification failed (as expected): {e}")
 
         return redirect(url_for('home'))
     
