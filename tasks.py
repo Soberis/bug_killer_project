@@ -1,19 +1,18 @@
-import os
 import time
-from celery import Celery
+# We will use the celery instance from app.py to ensure shared configuration
+# To avoid circular imports, we don't import app here, but let app import tasks.
 
-# Celery Configuration
-REDIS_URL = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
-celery_app = Celery('tasks', broker=REDIS_URL, backend=REDIS_URL)
-
-@celery_app.task
-def send_bug_report_email(bug_title, bug_status):
-    """
-    Simulate sending an email report for a new bug.
-    In a real scenario, this would use an SMTP library.
-    """
-    print(f" [Background Task] Starting to send email for bug: {bug_title}")
-    # Simulate time-consuming work (e.g., connecting to SMTP server, sending)
-    time.sleep(5) 
-    print(f" [Background Task] Email sent successfully for bug: {bug_title} with status: {bug_status}")
-    return True
+def register_tasks(celery_app):
+    @celery_app.task
+    def send_bug_report_email(bug_title, bug_status):
+        """
+        Simulate sending an email report for a new bug.
+        """
+        print(f" [Background Task] Starting to send email for bug: {bug_title}")
+        # In testing mode (eager), this sleep will be noticeable, 
+        # but won't hang forever like a broken Redis connection.
+        time.sleep(1) 
+        print(f" [Background Task] Email sent successfully for bug: {bug_title}")
+        return True
+    
+    return send_bug_report_email

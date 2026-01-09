@@ -1,74 +1,67 @@
-import os
-import requests
+import pytest
 import responses
+import os
+
+# Set testing environment variable BEFORE importing app
+os.environ['TESTING'] = 'True'
 from app import app
 
-# The base URL of our Flask application
-# Default to localhost:5000 (standard for inside container or local dev)
-BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:5000")
+@pytest.fixture
+def client():
+    app.config['TESTING'] = True
+    app.config['WTF_CSRF_ENABLED'] = False  # Disable CSRF for easier testing
+    with app.test_client() as client:
+        yield client
 
-def test_health_check():
+def login(client, username="admin", password="admin123"):
+    """Helper function to login"""
+    return client.post('/login', data=dict(
+        username=username,
+        password=password
+    ), follow_redirects=True)
+
+def test_health_check(client):
     """Verify the health check endpoint."""
-    response = requests.get(f"{BASE_URL}/health")
+    response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "healthy"}
+    assert response.json == {"status": "healthy"}
 
-def test_home_page_status_code():
+def test_home_page_status_code(client):
     """
     Test that the home page is accessible and returns HTTP 200.
     """
-    response = requests.get(BASE_URL)
+    response = client.get("/")
     # Assert that the status code is 200 (OK)
     assert response.status_code == 200
-    assert "BugKiller Dashboard" in response.text
+    assert b"BugKiller Dashboard" in response.data
 
 @responses.activate
-def test_add_bug_with_mocked_notification():
+def test_add_bug_with_mocked_notification(client):
     """
     Test adding a bug and verify it triggers an external notification (mocked).
     """
-    # 1. Mock the external Slack API
+    # 1. Mock the Slack notification call (simulated 3rd party API)
+    # This must match the URL in app.py
     SLACK_URL = "https://api.slack.com/messaging/send"
     responses.add(responses.POST, SLACK_URL, json={"status": "ok"}, status=200)
 
-    # 2. Add a bug via Flask Test Client (runs in the same process)
+    # 2. Login first
+    login(client)
+
+    # 3. Add a bug via Flask Test Client
     new_bug = {
         "bug_title": "Mocked Notification Bug",
         "bug_status": "New"
     }
     
-    with app.test_client() as client:
-        # data=new_bug in test_client sends it as form data
-        response = client.post("/add", data=new_bug, follow_redirects=True)
-        
-        # 3. Verify bug was added
-        assert response.status_code == 200
-        assert b"Mocked Notification Bug" in response.data
+    # Now add the bug
+    response = client.post("/add", data=new_bug, follow_redirects=True)
     
-    # 4. Verify the Slack notification was actually attempted
-    # This works because everything is in the same process now!
-    assert len(responses.calls) > 0
+    # 4. Verify bug was added
+    assert response.status_code == 200
+    assert b"Mocked Notification Bug" in response.data
+    
+    # 5. Verify the Slack notification was actually attempted
+    # responses.calls tracks all intercepted requests
+    assert len(responses.calls) == 1
     assert responses.calls[0].request.url == SLACK_URL
-    print("\n[Success] Bug added and external notification mock verified!")
-
-def test_add_bug_automation():
-    """
-    Test the full flow: Add a bug and verify it appears on the home page.
-    """
-    # 1. Prepare the bug data
-    new_bug = {
-        "bug_title": "Automation Test Bug",
-        "bug_status": "Open"
-    }
-    
-    # 2. Send POST request to add the bug
-    # In Flask, form data is sent using the 'data' parameter in requests
-    response = requests.post(f"{BASE_URL}/add", data=new_bug)
-    
-    # 3. Assert redirection (302) or successful post
-    # After adding, Flask redirects (302) to the home page
-    assert response.status_code == 200  # Requests follows redirection by default
-    
-    # 4. Verify the new bug exists in the response text of the home page
-    assert "Automation Test Bug" in response.text
-    print("\n[Success] Bug added and verified by automation!")

@@ -32,9 +32,25 @@ def init_database():
     )
     """
     
+    create_users_sql = """
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL
+    )
+    """
+    
     try:
         cursor.execute(create_table_sql)
-        # Commit the changes and close the connection
+        cursor.execute(create_users_sql)
+        
+        # Seed admin user if not exists
+        cursor.execute("SELECT COUNT(*) FROM users")
+        if cursor.fetchone()[0] == 0:
+            from werkzeug.security import generate_password_hash
+            hashed_pw = generate_password_hash('admin123')
+            cursor.execute("INSERT INTO users (username, password) VALUES (?, ?)", ('admin', hashed_pw))
+            
         connection.commit()
         print(f"Successfully initialized database at: {db_path}")
     except Exception as e:

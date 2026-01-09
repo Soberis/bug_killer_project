@@ -2,21 +2,26 @@ import pytest
 import allure
 import time
 from pages.add_bug_page import AddBugPage
+from pages.login_page import LoginPage
 
 @allure.feature("Bug Management")
 @allure.story("UI Operations with POM")
 def test_add_bug_ui_pom(page):
     """
-    Test adding a bug using Page Object Model.
+    Test adding a bug using Page Object Model with Login.
     """
-    # 1. Initialize the Page Object (The Mechanic)
+    # 1. Initialize Page Objects
     add_page = AddBugPage(page)
+    login_page = LoginPage(page)
     
-    # 2. Driver actions (Readable English)
-    with allure.step("Navigate to dashboard"):
-        add_page.open()
-        assert "BugKiller - Dashboard" in add_page.get_title()
+    # 2. Login Flow
+    with allure.step("Login as Admin"):
+        login_page.navigate()
+        login_page.login("admin", "admin123")
+        # After login, should be redirected to dashboard
+        assert "BugKiller Dashboard" in page.content()
 
+    # 3. Add Bug Flow
     with allure.step("Go to Add Bug page"):
         add_page.click_add_new_bug()
 

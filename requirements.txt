@@ -44,7 +44,6 @@ pyperclip==1.11.0
 PyRect==0.2.0
 PyScreeze==1.0.1
 PySocks==1.7.1
-pytest==9.0.2
 pytest-base-url==2.1.0
 pytest-playwright==0.7.2
 python-docx==1.2.0
@@ -70,3 +69,5 @@ celery==5.3.6
 redis==5.0.1
 responses==0.23.3
 prometheus-flask-exporter==0.23.0
+Flask-Login==0.6.3
+locust==2.33.0
