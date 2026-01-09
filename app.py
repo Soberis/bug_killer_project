@@ -7,6 +7,9 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from werkzeug.security import generate_password_hash, check_password_hash
 from init_db import init_database
 from prometheus_flask_exporter import PrometheusMetrics
+from prometheus_client import Counter
+
+from database import db_manager
 
 # Create the Flask application instance
 app = Flask(__name__)
@@ -33,6 +36,9 @@ send_bug_report_email = register_tasks(celery)
 
 metrics = PrometheusMetrics(app)
 
+# [Level 17] Custom Metrics for SDET Analysis
+BUG_CREATED_COUNTER = Counter('bug_created_total', 'Total number of bugs reported', ['status'])
+
 # Login Manager Setup
 login_manager = LoginManager()
 login_manager.login_view = 'login'
@@ -46,135 +52,17 @@ class User(UserMixin):
 
 @login_manager.user_loader
 def load_user(user_id):
-    conn = get_db_connection()
-    user = None
-    if DB_TYPE == 'mysql':
-        with conn.cursor() as cursor:
-            cursor.execute('SELECT id, username FROM users WHERE id = %s', (user_id,))
-            row = cursor.fetchone()
-            if row:
-                user = User(row['id'], row['username'])
-    else:
-        row = conn.execute('SELECT id, username FROM users WHERE id = ?', (user_id,)).fetchone()
-        if row:
-            user = User(row[0], row[1])
-    conn.close()
-    return user
-
-# Database Configuration from Environment Variables
-DB_TYPE = os.environ.get('DATABASE_TYPE', 'mysql')
-DB_HOST = os.environ.get('DB_HOST', 'localhost')
-DB_USER = os.environ.get('DB_USER', 'root')
-DB_PASSWORD = os.environ.get('DB_PASSWORD', 'root')
-DB_NAME = os.environ.get('DB_NAME', 'bugkiller')
-
-# SQLite path
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SQLITE_PATH = os.path.join(BASE_DIR, 'db', 'bugkiller.db')
-
-def get_db_connection(connect_to_db=True):
-    """
-    Helper function to create a database connection.
-    Supports both SQLite and MySQL based on environment.
-    If connect_to_db is False, connects to MySQL server without selecting a DB.
-    """
-    if DB_TYPE == 'mysql':
-        # Retry logic for MySQL as it takes time to boot up in Docker
-        retries = 10
-        while retries > 0:
-            try:
-                conn = pymysql.connect(
-                    host=DB_HOST,
-                    user=DB_USER,
-                    password=DB_PASSWORD,
-                    database=DB_NAME if connect_to_db else None,
-                    cursorclass=pymysql.cursors.DictCursor,
-                    connect_timeout=10
-                )
-                return conn
-            except Exception as e:
-                # If database doesn't exist, we need to connect without DB first
-                if "Unknown database" in str(e) and connect_to_db:
-                    app.logger.warning(f"Database {DB_NAME} not found. Will create it.")
-                    return get_db_connection(connect_to_db=False)
-                
-                retries -= 1
-                app.logger.warning(f"Waiting for MySQL ({DB_HOST})... {retries} retries left. Error: {e}")
-                time.sleep(5)
-        raise Exception("Could not connect to MySQL after several retries.")
-    else:
-        # Fallback to SQLite
-        conn = sqlite3.connect(SQLITE_PATH)
-        conn.row_factory = sqlite3.Row
-        return conn
-
-def init_db_schema():
-    """Ensure database and tables exist."""
-    if DB_TYPE == 'sqlite':
-        init_database()
-    else:
-        # 1. Connect to MySQL Server (without DB)
-        conn = get_db_connection(connect_to_db=False)
-        try:
-            with conn.cursor() as cursor:
-                # 2. Create Database if not exists
-                cursor.execute(f"CREATE DATABASE IF NOT EXISTS {DB_NAME}")
-                app.logger.info(f"Database {DB_NAME} ensured.")
-            conn.commit()
-        finally:
-            conn.close()
-
-        # 3. Connect to the specific DB and create tables
-        conn = get_db_connection(connect_to_db=True)
-        try:
-            with conn.cursor() as cursor:
-                # Create bugs table
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS bugs (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        title VARCHAR(255) NOT NULL,
-                        status VARCHAR(50) DEFAULT 'New',
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )
-                ''')
-                # Create users table
-                cursor.execute('''
-                    CREATE TABLE IF NOT EXISTS users (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        username VARCHAR(100) UNIQUE NOT NULL,
-                        password VARCHAR(255) NOT NULL
-                    )
-                ''')
-            conn.commit()
-            app.logger.info("Tables 'bugs' and 'users' ensured.")
-            
-            # 4. Auto Seeding: If tables are empty, add sample data
-            with conn.cursor() as cursor:
-                # Seed bugs
-                cursor.execute("SELECT COUNT(*) as count FROM bugs")
-                if cursor.fetchone()['count'] == 0:
-                    app.logger.info("Seeding sample bugs...")
-                    sample_bugs = [
-                        ('Login page crashing on Chrome', 'Open'),
-                        ('UI button color is wrong', 'In Progress'),
-                        ('API returning 500 error on /search', 'New')
-                    ]
-                    cursor.executemany("INSERT INTO bugs (title, status) VALUES (%s, %s)", sample_bugs)
-                
-                # Seed admin user (password: admin123)
-                cursor.execute("SELECT COUNT(*) as count FROM users")
-                if cursor.fetchone()['count'] == 0:
-                    app.logger.info("Seeding admin user...")
-                    hashed_pw = generate_password_hash('admin123')
-                    cursor.execute("INSERT INTO users (username, password) VALUES (%s, %s)", ('admin', hashed_pw))
-            conn.commit()
-            app.logger.info("Sample data seeded successfully.")
-        finally:
-            conn.close()
+    row = db_manager.fetch_one('SELECT id, username FROM users WHERE id = ?', (user_id,))
+    if row:
+        # Handle dict vs tuple
+        uid = row['id'] if isinstance(row, dict) else row[0]
+        uname = row['username'] if isinstance(row, dict) else row[1]
+        return User(uid, uname)
+    return None
 
 # Initialize database before first request
 with app.app_context():
-    init_db_schema()
+    db_manager.init_db()
 
 @app.route('/health')
 def health_check():
@@ -184,14 +72,7 @@ def health_check():
 # Define the root route
 @app.route('/')
 def index():
-    conn = get_db_connection()
-    if DB_TYPE == 'mysql':
-        with conn.cursor() as cursor:
-            cursor.execute('SELECT * FROM bugs ORDER BY created_at DESC')
-            bugs = cursor.fetchall()
-    else:
-        bugs = conn.execute('SELECT * FROM bugs ORDER BY created_at DESC').fetchall()
-    conn.close()
+    bugs = db_manager.execute_query('SELECT * FROM bugs ORDER BY created_at DESC', fetch=True)
     return render_template('index.html', bugs=bugs)
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -200,20 +81,12 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         
-        conn = get_db_connection()
-        user_row = None
-        if DB_TYPE == 'mysql':
-            with conn.cursor() as cursor:
-                cursor.execute('SELECT * FROM users WHERE username = %s', (username,))
-                user_row = cursor.fetchone()
-        else:
-            user_row = conn.execute('SELECT * FROM users WHERE username = ?', (username,)).fetchone()
-        conn.close()
+        user_row = db_manager.fetch_one('SELECT * FROM users WHERE username = ?', (username,))
 
         if user_row:
-            # Handle different row formats (Dict for MySQL, Tuple/Row for SQLite)
-            stored_pw = user_row['password'] if DB_TYPE == 'mysql' else user_row[2]
-            user_id = user_row['id'] if DB_TYPE == 'mysql' else user_row[0]
+            # Handle different row formats
+            stored_pw = user_row['password'] if isinstance(user_row, dict) else user_row[2]
+            user_id = user_row['id'] if isinstance(user_row, dict) else user_row[0]
             
             if check_password_hash(stored_pw, password):
                 user = User(user_id, username)
@@ -238,14 +111,9 @@ def add_bug():
         status = request.form.get('bug_status')
         
         try:
-            conn = get_db_connection()
-            if DB_TYPE == 'mysql':
-                with conn.cursor() as cursor:
-                    cursor.execute('INSERT INTO bugs (title, status) VALUES (%s, %s)', (title, status))
-            else:
-                conn.execute('INSERT INTO bugs (title, status) VALUES (?, ?)', (title, status))
-            conn.commit()
-            conn.close()
+            db_manager.execute_query('INSERT INTO bugs (title, status) VALUES (?, ?)', (title, status))
+            # [Level 17] Increment custom metric
+            BUG_CREATED_COUNTER.labels(status=status).inc()
         except Exception as e:
             app.logger.error(f"Database error during add_bug: {e}")
             flash(f"Error saving bug to database: {str(e)}")
@@ -276,19 +144,13 @@ def add_bug():
 @login_required
 def delete_bug(bug_id):
     try:
-        conn = get_db_connection()
-        if DB_TYPE == 'mysql':
-            with conn.cursor() as cursor:
-                cursor.execute('DELETE FROM bugs WHERE id = %s', (bug_id,))
-        else:
-            conn.execute('DELETE FROM bugs WHERE id = ?', (bug_id,))
-        conn.commit()
-        conn.close()
+        db_manager.execute_query('DELETE FROM bugs WHERE id = ?', (bug_id,))
     except Exception as e:
         app.logger.error(f"Error deleting bug {bug_id}: {e}")
         flash(f"Error deleting bug: {str(e)}")
         
     return redirect(url_for('index'))
+
 
 if __name__ == '__main__':
     # Start the Flask development server

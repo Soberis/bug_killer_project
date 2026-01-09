@@ -1,0 +1,7 @@
+global:
+  scrape_interval: 5s # 采集频率设为 5 秒，方便演示
+
+scrape_configs:
+  - job_name: 'bugkiller-app'
+    static_configs:
+      - targets: ['web:5000']
