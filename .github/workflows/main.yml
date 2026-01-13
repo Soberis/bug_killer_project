@@ -33,7 +33,7 @@ jobs:
       run: |
         docker compose up -d
         echo "Waiting for services to be ready..."
-        sleep 20  # Wait for MySQL and Web to fully start
+        sleep 30  # Wait for MySQL and Web to fully start
 
     # 5. Run All Tests
     - name: Run Tests (Unit + API + UI)
