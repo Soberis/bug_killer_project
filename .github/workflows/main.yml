@@ -9,31 +9,48 @@ on:
 
 jobs:
   test:
-    # 2. Environment: Use the latest Ubuntu image
     runs-on: ubuntu-latest
 
     steps:
-    # 3. Checkout: Download the code to the runner
+    # 1. Checkout Code
     - uses: actions/checkout@v4
 
-    # 4. Run Everything using Docker Compose
-    - name: Build and Run with Docker Compose
+    # 2. Setup Python Environment (Host)
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    # 3. Install Dependencies
+    - name: Install Dependencies
       run: |
-        docker compose up -d --build
+        pip install -r requirements.txt
+        playwright install chromium
+
+    # 4. Start Docker Services
+    - name: Start Services
+      run: |
+        docker compose up -d
         echo "Waiting for services to be ready..."
-        sleep 20  # Give MySQL time to initialize
+        sleep 20  # Wait for MySQL and Web to fully start
 
-    # 5. Run API Tests
-    - name: Run API Tests
+    # 5. Run All Tests
+    - name: Run Tests (Unit + API + UI)
+      env:
+        DB_PORT: 3307  # Connect to exposed Docker port
       run: |
-        docker compose exec -T web pytest tests/test_api.py
+        pytest -v
 
-    # 6. Run UI Tests (POM) - SKIP (Requires Playwright in Docker)
-    # - name: Run UI Tests
-    #   run: |
-    #     docker compose exec -T web pytest tests/test_ui.py
+    # 6. Upload Test Report (Allure/Junit if configured, or just artifacts)
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: allure-results/
 
     # 7. Cleanup
-    - name: Shutdown containers
+    - name: Shutdown
       if: always()
       run: docker compose down

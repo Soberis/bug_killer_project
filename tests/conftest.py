@@ -13,6 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 # Database configuration
 DB_TYPE = os.environ.get("DATABASE_TYPE", "mysql")
 DB_HOST = os.environ.get("DB_HOST", "localhost")
+DB_PORT = int(os.environ.get("DB_PORT", 3306))
 DB_USER = os.environ.get("DB_USER", "root")
 DB_PASSWORD = os.environ.get("DB_PASSWORD", "root")
 DB_NAME = os.environ.get("DB_NAME", "bugkiller")
@@ -27,6 +28,7 @@ def db_conn():
     if DB_TYPE == "mysql":
         conn = pymysql.connect(
             host=DB_HOST,
+            port=DB_PORT,
             user=DB_USER,
             password=DB_PASSWORD,
             database=DB_NAME,

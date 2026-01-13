@@ -60,7 +60,27 @@ docker-compose up -d
 
 # 2. 启动性能压测工具 (Locust)
 locust -f performance/locustfile.py --host http://localhost:15005
+# 2. 启动性能压测工具 (Locust)
+locust -f performance/locustfile.py --host http://localhost:15005
 ```
+
+## 💻 本地开发与测试 (Dev & Testing)
+
+作为 SDET 项目，确保测试的可执行性至关重要。
+
+1. **安装本地依赖**:
+   ```bash
+   pip install -r requirements.txt
+   playwright install chromium
+   ```
+
+2. **运行测试套件**:
+   本项目已配置 `pytest.ini`，并支持连接 Docker 数据库 (Port 3307)。
+   ```bash
+   # 运行所有测试 (Unit + UI + API)
+   # 确保 Docker 容器已启动 (docker-compose up -d)
+   $env:DB_PORT="3307"; pytest
+   ```
 
 ### 🔗 服务访问入口
 
