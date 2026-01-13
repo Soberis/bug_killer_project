@@ -9,7 +9,7 @@ services:
     ports:
       - "3307:3306"  # 映射到宿主机的 3307 端口，避免冲突
     volumes:
-      - db_data:/var/lib/mysql
+      - mysql-data:/var/lib/mysql
 
   # 2. 我们的 BugKiller Web 应用
   web:
@@ -62,6 +62,7 @@ services:
     restart: always
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
     ports:
       - "9090:9090"
     depends_on:
@@ -73,10 +74,14 @@ services:
     restart: always
     ports:
       - "3000:3000"
+    volumes:
+      - grafana-storage:/var/lib/grafana
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     depends_on:
       - prometheus
 
 volumes:
-  db_data:
+  mysql-data:
+  prometheus-data:
+  grafana-storage:

@@ -34,10 +34,16 @@ celery.conf.update(app.config)
 from tasks import register_tasks
 send_bug_report_email = register_tasks(celery)
 
-metrics = PrometheusMetrics(app)
-
-# [Level 17] Custom Metrics for SDET Analysis
+# [Level 17] Prometheus Metrics Setup
+metrics = PrometheusMetrics(app, path='/metrics')
 BUG_CREATED_COUNTER = Counter('bug_created_total', 'Total number of bugs reported', ['status'])
+
+# Manual fallback for metrics if automatic registration fails
+@app.route('/metrics')
+def metrics_fallback():
+    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+    from flask import Response
+    return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
 
 # Login Manager Setup
 login_manager = LoginManager()
@@ -104,14 +110,13 @@ def logout():
 
 # Route to handle adding a new bug
 @app.route('/add', methods=['GET', 'POST'])
-@login_required
 def add_bug():
     if request.method == 'POST':
         title = request.form.get('bug_title')
         status = request.form.get('bug_status')
         
         try:
-            db_manager.execute_query('INSERT INTO bugs (title, status) VALUES (?, ?)', (title, status))
+            db_manager.execute_query('INSERT INTO bugs (title, status) VALUES (%s, %s)', (title, status))
             # [Level 17] Increment custom metric
             BUG_CREATED_COUNTER.labels(status=status).inc()
         except Exception as e:
@@ -144,7 +149,7 @@ def add_bug():
 @login_required
 def delete_bug(bug_id):
     try:
-        db_manager.execute_query('DELETE FROM bugs WHERE id = ?', (bug_id,))
+        db_manager.execute_query('DELETE FROM bugs WHERE id = %s', (bug_id,))
     except Exception as e:
         app.logger.error(f"Error deleting bug {bug_id}: {e}")
         flash(f"Error deleting bug: {str(e)}")
