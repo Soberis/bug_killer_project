@@ -21,4 +21,4 @@ Thumbs.db
 # Test Reports
 allure-results/
 allure-report/
-*.html
+# *.html <-- Removed to allow template tracking
