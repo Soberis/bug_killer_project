@@ -38,7 +38,11 @@ jobs:
     # 5. Run All Tests
     - name: Run Tests (Unit + API + UI)
       env:
-        DB_PORT: 3307  # Connect to exposed Docker port
+        DATABASE_TYPE: mysql
+        DB_HOST: localhost
+        DB_PORT: 3307
+        DB_USER: root
+        DB_PASSWORD: root
       run: |
         pytest -v
 
