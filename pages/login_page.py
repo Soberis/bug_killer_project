@@ -5,7 +5,7 @@ class LoginPage:
         self.page = page
         self.username_input = page.locator("#username")
         self.password_input = page.locator("#password")
-        self.login_button = page.get_by_role("button", name="Login")
+        self.login_button = page.get_by_role("button", name="Sign in")
 
     def navigate(self):
         self.page.goto("/login")

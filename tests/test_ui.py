@@ -19,7 +19,7 @@ def test_add_bug_ui_pom(page):
         login_page.navigate()
         login_page.login("admin", "admin123")
         # After login, should be redirected to dashboard
-        assert "BugKiller Dashboard" in page.content()
+        assert "Bug Dashboard" in page.content()
 
     # 3. Add Bug Flow
     with allure.step("Go to Add Bug page"):

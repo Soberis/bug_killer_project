@@ -3,14 +3,14 @@ from .base_page import BasePage
 class AddBugPage(BasePage):
     # Locators (The "Secret" of the Mechanic)
     # 把所有的选择器定义成类属性，方便以后统一修改
-    ADD_BUTTON = "text=+ Add New Bug"
+    ADD_BUTTON = "text=New Bug Report"
     TITLE_INPUT = "#bug_title"
     STATUS_SELECT = "#bug_status"
-    SUBMIT_BUTTON = "button:has-text('Submit Bug')"
+    SUBMIT_BUTTON = "button:has-text('Submit Report')"
     
     def __init__(self, page):
         super().__init__(page)
-        self.url = "http://127.0.0.1:30001"
+        self.url = "/"
 
     def open(self):
         self.navigate(self.url)
