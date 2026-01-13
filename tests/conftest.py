@@ -11,7 +11,7 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 # Database configuration
-DB_TYPE = os.environ.get("DATABASE_TYPE", "sqlite")
+DB_TYPE = os.environ.get("DATABASE_TYPE", "mysql")
 DB_HOST = os.environ.get("DB_HOST", "localhost")
 DB_PORT = int(os.environ.get("DB_PORT", 3306))
 DB_USER = os.environ.get("DB_USER", "root")
