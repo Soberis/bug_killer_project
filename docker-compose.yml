@@ -16,7 +16,7 @@ services:
     build: .
     image: bugkiller:latest
     ports:
-      - "5000:5000"
+      - "15005:5000"
     volumes:
       - .:/app
     environment:
@@ -35,8 +35,6 @@ services:
   redis:
     image: redis:7-alpine
     restart: always
-    ports:
-      - "6379:6379"
 
   # 4. Celery Worker (后台任务执行器)
   worker:
@@ -64,7 +62,7 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus-data:/prometheus
     ports:
-      - "9090:9090"
+      - "19091:9090"
     depends_on:
       - web
 
@@ -73,7 +71,7 @@ services:
     image: grafana/grafana:latest
     restart: always
     ports:
-      - "3000:3000"
+      - "13001:3000"
     volumes:
       - grafana-storage:/var/lib/grafana
     environment:

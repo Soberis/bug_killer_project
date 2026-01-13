@@ -2,7 +2,9 @@ import requests
 import time
 import random
 
-URL = "http://localhost:5000/add"
+import os
+
+URL = os.getenv("TARGET_URL", "http://localhost:5000/add")
 STATUSES = ["New", "In Progress", "Fixed", "Closed"]
 
 print("🚀 Starting BugKiller Traffic Simulator...")

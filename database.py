@@ -41,27 +41,40 @@ class DatabaseManager:
             return conn
 
     def execute_query(self, query, params=(), fetch=False):
-        """Execute a query and return results if needed."""
-        conn = self.get_connection()
-        try:
-            if self.db_type == 'mysql':
-                # Convert ? to %s for MySQL compatibility if needed
-                # (Simple replacement for common cases)
-                query = query.replace('?', '%s')
-                with conn.cursor() as cursor:
-                    cursor.execute(query, params)
-                    if fetch:
-                        return cursor.fetchall()
-                    conn.commit()
-                    return cursor.lastrowid
-            else:
-                cursor = conn.execute(query, params)
-                if fetch:
-                    return cursor.fetchall()
-                conn.commit()
-                return cursor.lastrowid
-        finally:
-            conn.close()
+        """Execute a query with retry logic for resilience."""
+        retries = 3
+        last_error = None
+        
+        while retries > 0:
+            try:
+                conn = self.get_connection()
+                try:
+                    if self.db_type == 'mysql':
+                        query = query.replace('?', '%s')
+                        with conn.cursor() as cursor:
+                            cursor.execute(query, params)
+                            if fetch:
+                                return cursor.fetchall()
+                            conn.commit()
+                            return cursor.lastrowid
+                    else:
+                        cursor = conn.execute(query, params)
+                        if fetch:
+                            return cursor.fetchall()
+                        conn.commit()
+                        return cursor.lastrowid
+                finally:
+                    conn.close()
+                break # Success, exit retry loop
+            except Exception as e:
+                last_error = e
+                retries -= 1
+                if retries > 0:
+                    print(f"Database query failed, retrying in 2s... ({retries} retries left). Error: {e}")
+                    time.sleep(2)
+                else:
+                    print(f"Database query failed after all retries. Error: {e}")
+                    raise last_error
 
     def fetch_one(self, query, params=()):
         results = self.execute_query(query, params, fetch=True)

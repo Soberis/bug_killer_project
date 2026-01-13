@@ -1,21 +1,31 @@
-import sqlite3
 import os
+from database import DatabaseManager
 
 def init_database():
-    # Get the absolute path of the current file's directory
+    # Use MySQL if DATABASE_URL is present, otherwise fallback to SQLite
+    db_url = os.getenv('DATABASE_URL')
+    
+    if db_url:
+        print(f"Initializing MySQL database...")
+        db_manager = DatabaseManager(db_url)
+        # Use %s for MySQL
+        db_manager.execute_query('DROP TABLE IF EXISTS bugs')
+        db_manager.execute_query('CREATE TABLE bugs (id INT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(255) NOT NULL, status VARCHAR(50) DEFAULT "New")')
+        db_manager.execute_query('INSERT INTO bugs (title, status) VALUES (%s, %s)', ('First Sample Bug', 'New'))
+        print("MySQL database initialized.")
+        return
+
+    # Legacy SQLite path (for local dev)
+    import sqlite3
+    print("Initializing local SQLite database...")
     base_dir = os.path.dirname(os.path.abspath(__file__))
     db_dir = os.path.join(base_dir, 'db')
     db_path = os.path.join(db_dir, 'bugkiller.db')
     
-    # Create the db directory if it doesn't exist
     if not os.path.exists(db_dir):
         os.makedirs(db_dir)
-        print(f"Created directory: {db_dir}")
     
-    # Connect to the database
     connection = sqlite3.connect(db_path)
-    
-    # Create a cursor object to execute SQL commands
     cursor = connection.cursor()
     
     # SQL command to create the bugs table
