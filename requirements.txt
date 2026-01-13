@@ -14,3 +14,4 @@ black==24.4.2
 flake8==7.0.0
 pytest-playwright==0.4.4
 allure-pytest==2.13.2
+responses==0.24.1
