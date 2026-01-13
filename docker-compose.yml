@@ -7,7 +7,7 @@ services:
       MYSQL_DATABASE: 'bugkiller'
       MYSQL_ROOT_PASSWORD: 'root'
     ports:
-      - "3307:3306"  # 映射到宿主机的 3307 端口，避免冲突
+      - "3306:3306"  
     volumes:
       - mysql-data:/var/lib/mysql
 
