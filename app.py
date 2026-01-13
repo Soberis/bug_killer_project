@@ -17,17 +17,26 @@ from config import Config
 
 # Create the Flask application instance
 app = Flask(__name__)
-app.config.from_object(Config)
+if os.environ.get("TESTING") == "True":
+    from config import TestingConfig
+    app.config.from_object(TestingConfig)
+else:
+    app.config.from_object(Config)
 
 # Celery Configuration
-celery = Celery(app.name, broker=app.config["CELERY_BROKER_URL"])
-celery.conf.update(app.config)
+celery = Celery(app.name, broker=app.config.get("CELERY_BROKER_URL"))
+celery.conf.update(
+    broker_url=app.config.get("CELERY_BROKER_URL"),
+    result_backend=app.config.get("CELERY_RESULT_BACKEND"),
+    task_always_eager=app.config.get("CELERY_TASK_ALWAYS_EAGER", False),
+)
 
 # Register tasks with the configured celery instance
 from tasks import register_tasks
 
 tasks_registry = register_tasks(celery)
-send_bug_report_email = tasks_registry
+send_bug_report_email = tasks_registry["send_email"]
+send_slack_notification = tasks_registry["send_slack"]
 
 # [Level 17] Prometheus Metrics Setup
 metrics = PrometheusMetrics(app, path="/metrics")
@@ -136,7 +145,7 @@ def add_bug():
 
         # [Level 15] External Notification (Async via Celery)
         try:
-            celery.send_task("tasks.send_slack_notification", args=[title, status])
+            send_slack_notification.delay(title, status)
         except Exception as e:
             app.logger.error(f"Failed to queue Slack task: {e}")
 

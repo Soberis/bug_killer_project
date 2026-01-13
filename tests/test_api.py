@@ -33,7 +33,7 @@ def test_home_page_status_code(client):
     response = client.get("/")
     # Assert that the status code is 200 (OK)
     assert response.status_code == 200
-    assert b"BugKiller Dashboard" in response.data
+    assert b"Bug Dashboard" in response.data
 
 @responses.activate
 def test_add_bug_with_mocked_notification(client):

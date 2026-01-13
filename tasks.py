@@ -38,4 +38,7 @@ def register_tasks(celery_app):
             print(f" [Background Task] Failed to send Slack: {e}")
         return True
 
-    return send_bug_report_email
+    return {
+        "send_email": send_bug_report_email,
+        "send_slack": send_slack_notification
+    }
