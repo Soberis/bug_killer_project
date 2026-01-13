@@ -1,8 +1,9 @@
 # 🐛 BugKiller System (SDET Portfolio Version)
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Docker](https://img.shields.io/badge/docker-compose-blue.svg)](https://www.docker.com/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Docker](https://img.shields.io/badge/docker-multi--stage-blue.svg)](https://www.docker.com/)
 [![Locust](https://img.shields.io/badge/perf-locust-green.svg)](https://locust.io/)
+[![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 **BugKiller** 是一个专为 **SDET (测试开发)** 打造的全栈实战项目。它不仅是一个简单的 Bug 管理系统，更是一个集成了**微服务架构、自动化测试集群、可观测性监控以及性能压测**的综合性作品集。
 
@@ -14,7 +15,8 @@
 - **全栈自动化 (Full-stack Automation)**: 集成 `Pytest` + `Requests` (接口) + `Playwright` (UI)，遵循 **POM (Page Object Model)** 设计模式。
 - **性能压测 (Performance Testing)**: 使用 **Locust** 模拟 500+ 并发用户，通过代码化脚本（Test as Code）进行压力测试。
 - **可观测性监控 (Observability)**: 深度集成 **Prometheus + Grafana**，实时监控自定义业务指标（如 Bug 提交速率、响应延迟）。
-- **务实运维 (Pragmatic Ops)**: 采用 Docker-Compose 进行全容器化编排，支持一键部署测试环境。
+- **企业级安全 (Enterprise Security)**: 生产环境强制密钥检查 (Fail-Fast)，防止敏感信息泄露。
+- **极简构建 (Optimized Build)**: 采用 **Docker Multi-stage Build**，镜像体积更小更安全。
 
 ---
 
@@ -22,8 +24,8 @@
 
 | 类别 | 技术工具 |
 | :--- | :--- |
-| **Backend** | Python Flask, MySQL 8.0, Redis 7 |
-| **Async Tasks** | Celery |
+| **Backend** | Python Flask, MySQL 8.0, Redis 7 (Async Tasks: Celery) |
+| **Frontend** | Tailwind CSS, Flowbite |
 | **Automation** | Pytest, Requests, Playwright (UI) |
 | **Performance** | **Locust** |
 | **Monitoring** | **Prometheus**, **Grafana** |
@@ -35,14 +37,15 @@
 
 ```text
 bug_killer_project/
-├── performance/        # [NEW] Locust 性能压测脚本 (locustfile.py)
+├── performance/        # Locust 性能压测脚本 (locustfile.py)
 ├── pages/              # UI 自动化 POM 页面对象
 ├── tests/              # 自动化测试套件 (API & UI)
 ├── tasks/              # Celery 异步任务定义
 ├── app.py              # Flask 主程序 (包含 Prometheus 指标埋点)
+├── config.py           # 配置管理 (Security Hardened)
 ├── prometheus.yml      # Prometheus 采集配置
 ├── docker-compose.yml  # 多容器编排 (15005, 19091, 13001 端口映射)
-└── Dockerfile          # 业务镜像构建
+└── Dockerfile          # 多阶段构建 (Multi-stage Build)
 ```
 
 ---

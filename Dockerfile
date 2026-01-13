@@ -1,23 +1,36 @@
-# 1. Base Image: Start with a lightweight Python environment
-FROM python:3.11-slim
+# Stage 1: Builder
+# We use a larger image with build tools to compile dependencies
+FROM python:3.11-slim as builder
 
-# 2. Set Working Directory inside the container
 WORKDIR /app
 
-# 3. Copy requirements first (for better caching)
+# Prevent Python from writing pyc files and buffering stdout
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
+RUN pip install --prefix=/install --no-cache-dir -r requirements.txt
 
-# 4. Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Stage 2: Runtime
+# We copy only the installed libraries from the builder stage
+FROM python:3.11-slim
 
-# 5. Copy the rest of the application code
+WORKDIR /app
+
+# Copy installed python dependencies from builder stage
+COPY --from=builder /install /usr/local
+
+# Copy application code
 COPY . .
 
-# 6. Initialize the database (Running our script inside the container)
+# Run db init
 RUN python init_db.py
 
-# 7. Expose the port Flask runs on
 EXPOSE 5000
 
-# 8. Command to run the application
 CMD ["python", "app.py"]
+

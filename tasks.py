@@ -1,5 +1,6 @@
 import time
 import requests
+
 # We will use the celery instance from app.py to ensure shared configuration
 # To avoid circular imports, we don't import app here, but let app import tasks.
 
@@ -38,7 +39,4 @@ def register_tasks(celery_app):
             print(f" [Background Task] Failed to send Slack: {e}")
         return True
 
-    return {
-        "send_email": send_bug_report_email,
-        "send_slack": send_slack_notification
-    }
+    return {"send_email": send_bug_report_email, "send_slack": send_slack_notification}

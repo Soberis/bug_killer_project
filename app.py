@@ -19,6 +19,7 @@ from config import Config
 app = Flask(__name__)
 if os.environ.get("TESTING") == "True":
     from config import TestingConfig
+
     app.config.from_object(TestingConfig)
 else:
     app.config.from_object(Config)
