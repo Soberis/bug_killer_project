@@ -19,7 +19,8 @@ class DatabaseManager:
 
     def get_connection(self, connect_to_db=True):
         if self.db_type == "mysql":
-            retries = 5
+            retries = 15
+            last_error = None
             while retries > 0:
                 try:
                     conn = pymysql.connect(
@@ -33,11 +34,12 @@ class DatabaseManager:
                     )
                     return conn
                 except Exception as e:
+                    last_error = e
                     if "Unknown database" in str(e) and connect_to_db:
                         return self.get_connection(connect_to_db=False)
                     retries -= 1
                     time.sleep(2)
-            raise Exception("MySQL connection failed")
+            raise Exception(f"MySQL connection failed after retries: {last_error}")
         else:
             conn = sqlite3.connect(self.sqlite_path)
             conn.row_factory = sqlite3.Row
