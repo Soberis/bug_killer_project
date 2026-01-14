@@ -5,6 +5,7 @@ redis==5.0.1
 requests==2.31.0
 prometheus-flask-exporter==0.23.0
 pymysql==1.1.0
+cryptography==42.0.0
 
 # Dev / Testing
 pytest==8.0.0
